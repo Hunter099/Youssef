@@ -1,169 +1,104 @@
-from random import choice
-from turtle import *
+import pygame
+import sys
+import random
 
-from freegames import floor, vector
+# Initialize Pygame
+pygame.init()
 
-state = {'score': 0}
-path = Turtle(visible=False)
-writer = Turtle(visible=False)
-aim = vector(5, 0)
-pacman = vector(-40, -80)
-ghosts = [
-    [vector(-180, 160), vector(5, 0)],
-    [vector(-180, -160), vector(0, 5)],
-    [vector(100, 160), vector(0, -5)],
-    [vector(100, -160), vector(-5, 0)],
-]
-# fmt: off
-tiles = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-    0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0,
-    0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-]
-# fmt: on
+# Constants
+SCREEN_WIDTH = 640
+SCREEN_HEIGHT = 480
+GRID_SIZE = 20
+PACMAN_SPEED = 5
 
+# Colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+YELLOW = (255, 255, 0)
 
-def square(x, y):
-    """Draw square using path at (x, y)."""
-    path.up()
-    path.goto(x, y)
-    path.down()
-    path.begin_fill()
+# Create the game screen
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Pac-Man")
 
-    for count in range(4):
-        path.forward(20)
-        path.left(90)
+# Define Pac-Man and its properties
+pacman = pygame.image.load("pacman.png")
+pacman_rect = pacman.get_rect()
+pacman_x = 300
+pacman_y = 200
+pacman_direction = "right"
 
-    path.end_fill()
+# Define ghosts and their properties
+ghosts = []
+for _ in range(3):
+    ghost = pygame.image.load("ghost.png")
+    ghost_rect = ghost.get_rect()
+    ghost_x = random.randint(0, SCREEN_WIDTH - GRID_SIZE)
+    ghost_y = random.randint(0, SCREEN_HEIGHT - GRID_SIZE)
+    ghost_direction = random.choice(["up", "down", "left", "right"])
+    ghosts.append((ghost, ghost_rect, ghost_x, ghost_y, ghost_direction))
 
+# Main game loop
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-def offset(point):
-    """Return offset of point in tiles."""
-    x = (floor(point.x, 20) + 200) / 20
-    y = (180 - floor(point.y, 20)) / 20
-    index = int(x + y * 20)
-    return index
+    # Move Pac-Man
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        pacman_direction = "left"
+        pacman_x -= PACMAN_SPEED
+    if keys[pygame.K_RIGHT]:
+        pacman_direction = "right"
+        pacman_x += PACMAN_SPEED
+    if keys[pygame.K_UP]:
+        pacman_direction = "up"
+        pacman_y -= PACMAN_SPEED
+    if keys[pygame.K_DOWN]:
+        pacman_direction = "down"
+        pacman_y += PACMAN_SPEED
 
+    # Update ghost positions
+    for ghost, ghost_rect, ghost_x, ghost_y, ghost_direction in ghosts:
+        if ghost_direction == "left":
+            ghost_x -= PACMAN_SPEED
+        elif ghost_direction == "right":
+            ghost_x += PACMAN_SPEED
+        elif ghost_direction == "up":
+            ghost_y -= PACMAN_SPEED
+        elif ghost_direction == "down":
+            ghost_y += PACMAN_SPEED
 
-def valid(point):
-    """Return True if point is valid in tiles."""
-    index = offset(point)
+        # Ghost AI (random movement)
+        if random.randint(0, 1):
+            ghost_direction = random.choice(["left", "right", "up", "down"])
 
-    if tiles[index] == 0:
-        return False
+        ghost_rect.topleft = (ghost_x, ghost_y)
 
-    index = offset(point + 19)
+    # Check for collisions with ghosts
+    for _, ghost_rect, _, _, _ in ghosts:
+        if pacman_rect.colliderect(ghost_rect):
+            running = False
 
-    if tiles[index] == 0:
-        return False
+    # Draw everything on the screen
+    screen.fill(BLACK)
+    screen.blit(pacman, (pacman_x, pacman_y))
+    for ghost, _, ghost_x, ghost_y, _ in ghosts:
+        screen.blit(ghost, (ghost_x, ghost_y))
 
-    return point.x % 20 == 0 or point.y % 20 == 0
+    pygame.display.flip()
 
+# Game over screen
+game_over_font = pygame.font.Font(None, 36)
+game_over_text = game_over_font.render("Game Over!", True, YELLOW)
+game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+screen.blit(game_over_text, game_over_rect.topleft)
+pygame.display.flip()
 
-def world():
-    """Draw world using path."""
-    bgcolor('black')
-    path.color('blue')
+# Wait for a few seconds before quitting
+pygame.time.delay(3000)
 
-    for index in range(len(tiles)):
-        tile = tiles[index]
-
-        if tile > 0:
-            x = (index % 20) * 20 - 200
-            y = 180 - (index // 20) * 20
-            square(x, y)
-
-            if tile == 1:
-                path.up()
-                path.goto(x + 10, y + 10)
-                path.dot(2, 'white')
-
-
-def move():
-    """Move pacman and all ghosts."""
-    writer.undo()
-    writer.write(state['score'])
-
-    clear()
-
-    if valid(pacman + aim):
-        pacman.move(aim)
-
-    index = offset(pacman)
-
-    if tiles[index] == 1:
-        tiles[index] = 2
-        state['score'] += 1
-        x = (index % 20) * 20 - 200
-        y = 180 - (index // 20) * 20
-        square(x, y)
-
-    up()
-    goto(pacman.x + 10, pacman.y + 10)
-    dot(20, 'yellow')
-
-    for point, course in ghosts:
-        if valid(point + course):
-            point.move(course)
-        else:
-            options = [
-                vector(5, 0),
-                vector(-5, 0),
-                vector(0, 5),
-                vector(0, -5),
-            ]
-            plan = choice(options)
-            course.x = plan.x
-            course.y = plan.y
-
-        up()
-        goto(point.x + 10, point.y + 10)
-        dot(20, 'red')
-
-    update()
-
-    for point, course in ghosts:
-        if abs(pacman - point) < 20:
-            return
-
-    ontimer(move, 100)
-
-
-def change(x, y):
-    """Change pacman aim if valid."""
-    if valid(pacman + vector(x, y)):
-        aim.x = x
-        aim.y = y
-
-
-setup(420, 420, 370, 0)
-hideturtle()
-tracer(False)
-writer.goto(160, 160)
-writer.color('white')
-writer.write(state['score'])
-listen()
-onkey(lambda: change(5, 0), 'Right')
-onkey(lambda: change(-5, 0), 'Left')
-onkey(lambda: change(0, 5), 'Up')
-onkey(lambda: change(0, -5), 'Down')
-world()
-move()
-done()
+# Quit Pygame
+pygame.quit()
+sys.exit()
